@@ -4,71 +4,75 @@ from PyQt6 import uic
 import os
 import json
 
+
+# entity
 class User:
     def __init__(self, username, email, age, grade):
-        self.username = username
-        self.email = email
-        self.age = age
-        self.grade = grade
+        self.__username = username
+        self.__email = email
+        self.__age = age
+        self.__grade = grade
 
-        #setter
+    # setters
     def set_username(self, username):
         if len(username) < 6:
-            raise ValueError("Username must be at least 6 characters long.")
-        self.username = username
+            raise ValueError("Username must be at least 3 characters long.")
+        self.__username = username
 
     def set_email(self, email):
         if "@" not in email or "." not in email:
-            raise ValueError("Invalid email format.")
-        self.email = email
+            raise ValueError("Invalid email address.")
+        self.__email = email
 
     def set_age(self, age):
-        if age < 0 or age > 120:
-            raise ValueError("Age must be between 0 and 120.")
-        self.age = age
+        if age < 0:
+            raise ValueError("Age must be a positive integer.")
+        self.__age = age
 
     def set_grade(self, grade):
-        self.grade = grade
+        self.__grade = grade
 
-    #getter 
-
+    # getters
     def get_username(self):
-        return self.username
+        return self.__username
 
     def get_email(self):
-        return self.email
+        return self.__email
 
     def get_age(self):
-        return self.age
+        return self.__age
 
     def get_grade(self):
-        return self.grade
+        return self.__grade
+
     # print
     def __str__(self):
         # hiển thị vào list widget
-        return f"Username: {self.username} - Grade: {self.grade}"
+        return f"Username: {self.__username} - Grade: {self.__grade}"
+
 
 class UserManager:
     # quan ly danh sach nguoi dung
     def __init__(self):
         self.users = []
 
-    #CRUD
-    #add user
-    def add_user(self, user:User):
+    # CRUD ---------------------------
+    # add user
+    def add_user(self, user: User):
         self.users.append(user)
 
-    #edit user
-    def edit_user(self, old_user:User, new_user:User):
-        # ko dc chinh sua email
-       for user in self.users:
-            if user.get_email() == old_user.get_email():
+    # edit user
+    def edit_user(self, new_user: User):
+        # khong duoc chinh sua email (unique - duy nhat)
+        for user in self.users:
+            if user.get_email() == new_user.get_email():
                 user.set_username(new_user.get_username())
                 user.set_age(new_user.get_age())
                 user.set_grade(new_user.get_grade())
                 return True
-       return False        
-    #delete user
+        return False
+
+    # delete user
     def delete_user(self, email):
         for user in self.users:
             if user.get_email() == email:
@@ -76,23 +80,23 @@ class UserManager:
                 return True
         return False
 
-    # get all
+    # get all 
     def get_all_users(self):
         return self.users
 
-    # search user 
+    # search user
     def search_user(self, keyword):
-        #tim = grade / username
+        # tim = grade / username 
         if keyword == "":
             return self.users
         else:
-            result = []
+            results = []
             for user in self.users:
                 if keyword.lower() in user.get_username().lower() or keyword.lower() in user.get_grade().lower():
-                    result.append(user)
-            return result
-
-#save to JSON
+                    results.append(user)
+            return results
+        
+    # save to JSON -----------------------------
     def save_to_json(self, filename):
         data = []
         for user in self.users:
@@ -102,13 +106,14 @@ class UserManager:
                 "age": user.get_age(),
                 "grade": user.get_grade()
             })
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(data, f, indent=4)
-# load from JSON
+            
+    # load from JSON -----------------------------
     def load_from_json(self, filename):
         if not os.path.exists(filename):
             return
-        with open(filename, 'r') as f:
+        with open(filename, "r") as f:
             data = json.load(f)
             for user_data in data:
                 user = User(
@@ -118,64 +123,66 @@ class UserManager:
                     user_data["grade"]
                 )
                 self.users.append(user)
-    
-    
+        
+
 class HomeWindow(QMainWindow):
     def __init__(self):
-        super().__init__() 
+        super().__init__() # co ke thua  -> co super
         uic.loadUi("B7/home.ui", self)
-        #khai bao danh sach user -> quan ly
+        # khai bao danh sach user -> quan ly
         self.user_manager = UserManager()
+        # khai bao list widget
+        # self.list_widget = self.listWidget
         self.load_users()
 
-        #connect signals
-        self.addButton.clicked.connect(self.add_user)
-        self.editButton.clicked.connect(self.edit_user)
-        self.deleteButton.clicked.connect(self.delete_user)
+        # connect signals
+        self.add_btn.clicked.connect(self.open_add_window)
+        self.edit_btn.clicked.connect(self.open_edit_window)
+        self.delete_btn.clicked.connect(self.delete_user)
+        # enter de search 
         self.search_input.returnPressed.connect(self.search_user)
+        
     def load_users(self):
-        #load tu file json
-        self.user_manager.load_from_json("B7/users.json")
+        # load tu file json 
+        self.user_manager.load_from_json("users.json")
         for user in self.user_manager.get_all_users():
             item = QListWidgetItem(str(user))
-            self.listWidget.addItem(item)
-
+            self.listWidget.addItem(item) # them vao list widget hien thi tren man hinh
+        
     def open_add_window(self):
-        if self.listWidget.currentItem() != -1:
-            QMessageBox.warning(self, "Warning", "Please select a user to edit.")
-            return
         # mo cua so edit o tren cung
-
         self.add_window = EditWindow(isEdit=False, user_manager=self.user_manager, parent=self)
         self.add_window.show()
+
     def open_edit_window(self):
-        selected_item = self.listWidget.selectedItem()
-        # neu chua chon user nao trong danh sach -> loi
-        if not selected_item:
+        selected_items = self.listWidget.selectedItems()
+        if not selected_items:
             QMessageBox.warning(self, "Warning", "Please select a user to edit.")
             return
+        selected_item = selected_items[0]
         # lay index cua user duoc chon trong list widget
-        selected_index = self.listWidget.row(selected_item)
+        selected_index = self.listWidget.row(selected_item)       
         # lay user tu danh sach user thong qua index
         user = self.user_manager.get_all_users()[selected_index]
+        
         self.edit_window = EditWindow(isEdit=True, user=user, user_manager=self.user_manager, parent=self)
-        self.edit_window.show()
 
+        self.edit_window.show()
+        
     def delete_user(self):
-        selected_item = self.listWidget.selectedItem()
-        if not selected_item:
+        selected_items = self.listWidget.selectedItems()   # sửa: thêm "s"
+        if not selected_items:                              # danh sách rỗng = chưa chọn gì
             QMessageBox.warning(self, "Warning", "Please select a user to delete.")
             return
+        selected_item = selected_items[0]                   # lấy item đầu tiên trong list
         selected_index = self.listWidget.row(selected_item)
         user = self.user_manager.get_all_users()[selected_index]
-        # hien thi message box hoi de chac chan xoa hay khong
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete {user.get_username()}?")
         if confirm == QMessageBox.StandardButton.Yes:
             self.user_manager.delete_user(user.get_email())
             self.listWidget.takeItem(selected_index)
-            # sua lai danh sach luu trong file json
             self.user_manager.save_to_json("users.json")
-
+            
     def search_user(self):
         # enter de tim kiem user theo grade hoac username
         keyword = self.search_input.text()
@@ -183,9 +190,9 @@ class HomeWindow(QMainWindow):
         # xoa danh sach dang hien thi -> hien thi lai danh sach tim kiem 
         self.listWidget.clear()
         self.listWidget.addItems([str(user) for user in results])
-
-
-# dung chung 
+        
+     
+# dung chung ui edit cho add va edit
 class EditWindow(QMainWindow):
     def __init__(self, isEdit=False, user=None, user_manager=None, parent=None):
         super().__init__(parent)
@@ -193,8 +200,8 @@ class EditWindow(QMainWindow):
         self.isEdit = isEdit
         self.user = user
         self.user_manager = user_manager
-        # doi du lieu neu la edit
-        # doi ttle neu la add
+        
+        # doi du lieu neu la edit / doi title neu la add
         if self.isEdit:
             self.setWindowTitle("Edit User")
             self.load_current_user()
@@ -206,19 +213,15 @@ class EditWindow(QMainWindow):
             
         # nut cancel -> dong cua so edit
         self.cancel_btn.clicked.connect(self.close)
-        
-
 
     def load_current_user(self):
-        # phai kiem tra user != none -> lam tiep
         if self.user:
             self.username.setText(self.user.get_username())
             self.email.setText(self.user.get_email())
-            self.age.setValue(self.user.get_age())
-            self.grade.setCurrentText(self.user.get_grade())
-            # disable email input -> khong cho chinh sua email
+            self.age.setText(str(self.user.get_age()))   # sửa: setValue -> setText, và bọc str()
+            self.grade.setText(self.user.get_grade())     # sửa: setCurrentText -> setText
             self.email.setDisabled(True)
-            
+    
     def add_user(self):
         try:
             # Cắt khoảng trắng thừa
@@ -250,7 +253,7 @@ class EditWindow(QMainWindow):
         except ValueError as e:
             # Hiển thị nội dung lỗi trong MessageBox
             QMessageBox.warning(self, "Warning", str(e))
-
+            
     def edit_user(self):
         try:
             # Cắt khoảng trắng thừa
@@ -295,6 +298,7 @@ class EditWindow(QMainWindow):
             raise ValueError("Invalid email address.")
         if age < 0:
             raise ValueError("Age must be a positive integer.")
+        return True
 
 
 if __name__ == "__main__":
